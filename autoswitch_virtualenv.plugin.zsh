@@ -123,7 +123,10 @@ function _check_path()
 {
     local check_dir="$1"
 
-    if [[ -f "${check_dir}/${AUTOSWITCH_FILE}" ]]; then
+    if [[ "${check_dir}" = "${AUTOSWITCH_CURRENT_VENV_PATH:h}" ]]; then
+        printf "*"
+        return
+    elif [[ -f "${check_dir}/${AUTOSWITCH_FILE}" ]]; then
         printf "${check_dir}/${AUTOSWITCH_FILE}"
         return
     elif [[ -d "${check_dir}/${AUTOSWITCH_DIR}" ]]; then
@@ -176,6 +179,11 @@ function check_venv()
 
     if [[ -n "$venv_path" ]]; then
 
+        if [[ "$venv_path" = "*" ]]; then
+            # current env, we’re just staying here
+            return
+        fi
+
         /usr/bin/stat --version &> /dev/null
         if [[ $? -eq 0 ]]; then   # Linux, or GNU stat
             file_owner="$(/usr/bin/stat -c %u "$venv_path")"
@@ -194,6 +202,7 @@ function check_venv()
             printf "Reason: Found a $AUTOSWITCH_FILE file with weak permission settings ($file_permissions).\n"
             printf "Run the following command to fix this: ${PURPLE}\"chmod 600 $venv_path\"${NORMAL}\n"
         else
+            AUTOSWITCH_CURRENT_VENV_PATH="$venv_path"
             if [[ -d "$venv_path" ]]; then
                 if _maybeworkon "$venv_path" virtualenv; then
                     return
@@ -212,6 +221,8 @@ function check_venv()
                 _maybeworkon "$(_virtual_env_dir "$switch_to")" "virtualenv"
                 return
             fi
+            # if we got here, setting the path has not worked
+            unset AUTOSWITCH_CURRENT_VENV_PATH
         fi
     fi
 
@@ -235,6 +246,7 @@ function _default_venv()
     elif [[ -n "$VIRTUAL_ENV" ]]; then
         local venv_name="$(_get_venv_name "$VIRTUAL_ENV" "$venv_type")"
         _autoswitch_message "Deactivating: ${BOLD}${PURPLE}%s${NORMAL}\n" "$venv_name"
+        unset AUTOSWITCH_CURRENT_VENV_PATH
         deactivate
     fi
 }
