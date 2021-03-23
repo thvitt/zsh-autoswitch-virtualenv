@@ -126,13 +126,13 @@ function _check_path()
     if [[ -f "${check_dir}/${AUTOSWITCH_FILE}" ]]; then
         printf "${check_dir}/${AUTOSWITCH_FILE}"
         return
+    elif [[ -d "${check_dir}/${AUTOSWITCH_DIR}" ]]; then
+        printf "${check_dir}/${AUTOSWITCH_DIR}"
+        return
     elif [[ -f "${check_dir}/poetry.lock" ]]; then
         printf "${check_dir}/poetry.lock"
     elif [[ -f "${check_dir}/Pipfile" ]]; then
         printf "${check_dir}/Pipfile"
-    elif [[ -d "${check_dir}/${AUTOSWITCH_DIR}" ]]; then
-        printf "${check_dir}/${AUTOSWITCH_DIR}"
-        return
     else
         # Abort search at file system root or HOME directory (latter is a performance optimisation).
         if [[ "$check_dir" = "/" || "$check_dir" = "$HOME" ]]; then
