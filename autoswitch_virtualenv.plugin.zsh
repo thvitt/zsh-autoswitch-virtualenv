@@ -1,5 +1,6 @@
 export AUTOSWITCH_VERSION="3.1.1"
 export AUTOSWITCH_FILE=".venv"
+export AUTOSWITCH_DIR=".venv"
 
 RED="\e[31m"
 GREEN="\e[32m"
@@ -129,6 +130,9 @@ function _check_path()
         printf "${check_dir}/poetry.lock"
     elif [[ -f "${check_dir}/Pipfile" ]]; then
         printf "${check_dir}/Pipfile"
+    elif [[ -d "${check_dir}/${AUTOSWITCH_DIR}" ]]; then
+        printf "${check_dir}/${AUTOSWITCH_DIR}"
+        return
     else
         # Abort search at file system root or HOME directory (latter is a performance optimisation).
         if [[ "$check_dir" = "/" || "$check_dir" = "$HOME" ]]; then
@@ -185,11 +189,16 @@ function check_venv()
             printf "AUTOSWITCH WARNING: Virtualenv will not be activated\n\n"
             printf "Reason: Found a $AUTOSWITCH_FILE file but it is not owned by the current user\n"
             printf "Change ownership of ${PURPLE}$venv_path${NORMAL} to ${PURPLE}'$USER'${NORMAL} to fix this\n"
-        elif ! [[ "$file_permissions" =~ ^[64][04][04]$ ]]; then
+        elif ! [[ "$file_permissions" =~ ^[764][045][045]$ ]]; then
             printf "AUTOSWITCH WARNING: Virtualenv will not be activated\n\n"
             printf "Reason: Found a $AUTOSWITCH_FILE file with weak permission settings ($file_permissions).\n"
             printf "Run the following command to fix this: ${PURPLE}\"chmod 600 $venv_path\"${NORMAL}\n"
         else
+            if [[ -d "$venv_path" ]]; then
+                if _maybeworkon "$venv_path" virtualenv; then
+                    return
+                fi
+            fi
             if [[ "$venv_path" == *"/Pipfile" ]] && type "pipenv" > /dev/null; then
                 if _activate_pipenv; then
                     return
