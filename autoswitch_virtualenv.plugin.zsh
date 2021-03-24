@@ -167,6 +167,16 @@ function _activate_pipenv() {
     return 1
 }
 
+function _activate_conda() {
+
+    if (( $+functions[conda] )); then
+        if conda activate "$1"; then
+            return 0
+        fi
+    else
+    fi
+    return 1
+}
 
 # Automatically switch virtualenv when $AUTOSWITCH_FILE file detected
 function check_venv()
@@ -218,7 +228,12 @@ function check_venv()
                 fi
             else
                 local switch_to="$(<"$venv_path")"
-                _maybeworkon "$(_virtual_env_dir "$switch_to")" "virtualenv"
+                if _activate_conda "$switch_to"
+                then
+                    return
+                fi
+                local virtual_env_dir="$(_virtual_env_dir "$switch_to")"
+                _maybeworkon "$virtual_env_dir" "virtualenv"
                 return
             fi
             # if we got here, setting the path has not worked
@@ -248,6 +263,10 @@ function _default_venv()
         _autoswitch_message "Deactivating: ${BOLD}${PURPLE}%s${NORMAL}\n" "$venv_name"
         unset AUTOSWITCH_CURRENT_VENV_PATH
         deactivate
+    elif (( $+functions[conda] )) && [[ -n "$CONDA_DEFAULT_ENV" ]]; then
+        _autoswitch_message "Deactivating conda env: ${BOLD}${PURPLE}%s${NORMAL}\n" "$venv_name"
+        unset AUTOSWITCH_CURRENT_VENV_PATH
+        conda deactivate
     fi
 }
 
