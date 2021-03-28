@@ -68,6 +68,10 @@ function _get_venv_name() {
     local venv_type="$2"
     local venv_name="$(basename "$venv_dir")"
 
+    if [[ "$venv_name" = "$AUTOSWITCH_DIR" ]]; then
+        venv_name="${venv_dir:h:t}"
+    fi
+
     # clear pipenv from the extra identifiers at the end
     if [[ "$venv_type" == "pipenv" ]]; then
         venv_name="${venv_name%-*}"
@@ -96,6 +100,8 @@ function _maybeworkon() {
             printf "If the issue persists run ${PURPLE}rmvenv && mkvenv${NORMAL} in this directory\n"
             return
         fi
+
+        _deactivate_all
 
         local py_version="$(_python_version "$venv_dir/bin/python")"
         local message="${AUTOSWITCH_MESSAGE_FORMAT:-"$DEFAULT_MESSAGE_FORMAT"}"
@@ -167,9 +173,20 @@ function _activate_pipenv() {
     return 1
 }
 
+function _deactivate_all() {
+    if (( $+functions[deactivate] )) && [[ -n "$VIRTUAL_ENV" ]]; then
+        deactivate
+    fi
+
+    if (( $+functions[conda] )) && [[ -n "$CONDA_DEFAULT_ENV" ]]; then
+        conda deactivate
+    fi
+}
+
 function _activate_conda() {
 
     if (( $+functions[conda] )); then
+        _deactivate_all
         if conda activate "$1"; then
             return 0
         fi
@@ -264,7 +281,7 @@ function _default_venv()
         unset AUTOSWITCH_CURRENT_VENV_PATH
         deactivate
     elif (( $+functions[conda] )) && [[ -n "$CONDA_DEFAULT_ENV" ]]; then
-        _autoswitch_message "Deactivating conda env: ${BOLD}${PURPLE}%s${NORMAL}\n" "$venv_name"
+        _autoswitch_message "Deactivating conda env: ${BOLD}${PURPLE}%s${NORMAL}\n" "$CONDA_DEFAULT_ENV"
         unset AUTOSWITCH_CURRENT_VENV_PATH
         conda deactivate
     fi
