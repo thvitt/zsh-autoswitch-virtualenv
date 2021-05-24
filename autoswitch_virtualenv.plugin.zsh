@@ -56,6 +56,8 @@ function _get_venv_type() {
         venv_type="pipenv"
     elif [[ -f "$venv_dir/poetry.lock" ]]; then
         venv_type="poetry"
+    elif [[ -f "$venv_dir/environment.yml" ]]; then
+        venv_type="conda"
     elif [[ -f "$venv_dir/requirements.txt" || -f "$venv_dir/setup.py" ]]; then
         venv_type="virtualenv"
     fi
@@ -142,6 +144,8 @@ function _check_path()
         printf "${check_dir}/poetry.lock"
     elif [[ -f "${check_dir}/Pipfile" ]]; then
         printf "${check_dir}/Pipfile"
+    elif [[ -f "${check_dir}/environment.yml" ]]; then
+        printf "${check_dir}/environment.yml"
     else
         # Abort search at file system root or HOME directory (latter is a performance optimisation).
         if [[ "$check_dir" = "/" || "$check_dir" = "$HOME" ]]; then
@@ -242,6 +246,15 @@ function check_venv()
             elif [[ "$venv_path" == *"/poetry.lock" ]] && type "poetry" > /dev/null; then
                 if _activate_poetry; then
                     return
+                fi
+            elif [[ "$venv_path" == *"/environment.yml" ]] && type "conda" > /dev/null; then
+                local switch_to="$(awk '/^name:/ {print $2}' "$venv_path")"
+                if _activate_conda "$switch_to"
+                then
+                    return
+                else
+                    echo "Found conda environment spec for ${PURPLE}$switch_to${NORMAL} in ${PURPLE}$venv_path${NORMAL}."
+                    echo "Run ${GREEN}mkvenv${NORMAL} to create that environment."
                 fi
             else
                 local switch_to="$(<"$venv_path")"
@@ -363,6 +376,10 @@ function mkvenv()
         poetry install $params
         _activate_poetry
         return
+    elif [[ "$venv_type" == "conda" ]]; then
+        conda env create
+        local switch_to="$(awk '/^name:/ {print $2}' "environment.yml")"
+        _activate_conda "$switch_to"
     else
         if ! type "virtualenv" > /dev/null; then
             _missing_error_message virtualenv
